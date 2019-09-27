@@ -30,6 +30,12 @@ export default new Router({
       path: '/login',
       name: 'login-sign',
       component: resolve => require(['@/view/UserSys/LoginSign'], resolve)
+    },
+    {
+      path: '/forget',
+      name: 'forget',
+      component: resolve => require(['@/view/UserSys/Forget'], resolve)
     }
+
   ]
 })
