@@ -1,6 +1,7 @@
 <template>
     <div>
-      <el-card style="width: 25%; margin-left: auto;  margin-right: auto; margin-top: 8%" shadow="hover">
+      <transition name="el-zoom-in-center">
+      <el-card style="width: 25%; margin-left: auto;  margin-right: auto; margin-top: 8%" shadow="hover" v-show="show_card">
         <h3 align="center">用户登录</h3>
 
         <el-form :model="user" label-width="80px">
@@ -22,15 +23,16 @@
                           v-model="captcha.value"
                           prefix-icon="el-icon-picture-outline-round"
                           placeholder="请输入验证码"
-                          @blur="checkCap(captcha.value, captcha.check)"
+                          @blur="checkCap(captcha.value, captcha.check, type)"
                           :onchange="checkLength(captcha.value)"
                           id="cap_input"
                 ></el-input>
               </el-col>
               <el-col :offset="1" :span="8" >
                 <div v-if="type==='password'">
-                  <img v-if="captcha.check===0" id="img" @click="flushCaptcha" v-bind:src="captcha.captchaPath" alt="获取验证码" title="点击更换验证码" style="margin-top: 10px"/>
-                  <i class="el-icon-circle-check" v-if="captcha.check===1">&nbsp;&nbsp;&nbsp;验证通过</i>
+<!--                  v-bind:src="captcha.captchaPath"-->
+                  <img v-if="captcha.check===0" id="img" @click="flushCaptcha" src="../../assets/captcha.jpg" alt="获取验证码" title="点击更换验证码" style="margin-top: 10px"/>
+                  <i class="el-icon-circle-check" v-if="captcha.check===1">验证通过</i>
                 </div>
 
                 <div v-if="type==='phone'">
@@ -38,15 +40,17 @@
                     size="mini"
                     type="primary"
                     @click="getMsg(user.phoneNum)"
-                    v-if="btn_value==='获取验证码'"
+                    v-if="btn_value==='获取验证码' && captcha.check === 0"
                   >{{btn_value}}</el-button>
+
+                  <i class="el-icon-circle-check" v-if="captcha.check===1">&nbsp;&nbsp;&nbsp;验证通过</i>
                 </div>
                 <div v-if="type==='phone'">
                   <el-button
                     size="mini"
                     type="primary"
                     disabled
-                    v-if="btn_value!=='获取验证码'"
+                    v-if="btn_value!=='获取验证码' && captcha.check === 0"
                   >{{btn_value}}</el-button>
                 </div>
 
@@ -61,16 +65,12 @@
                 <el-button type="text"
                            size="mini"
                            v-if="type==='password'"
-                           @click="function change() {
-                             type = 'phone'
-                           }"
+                           @click="change_type()"
                 >手机登录</el-button>
                 <el-button type="text"
                            size="mini"
                            v-if="type==='phone'"
-                           @click="function change() {
-                             type = 'password'
-                           }"
+                           @click="change_type()"
                 >账密登录</el-button>
               </el-col>
 
@@ -88,6 +88,7 @@
         </el-form>
 
       </el-card>
+      </transition>
     </div>
 </template>
 
@@ -97,6 +98,7 @@
     name: 'login-sign',
     data () {
       return {
+        show_card:true,
         user:{
           passwd: '',
           username: '',
@@ -107,9 +109,10 @@
         captcha: {
           value:'',
           check: 0,
-          captchaPath: ''
+          captchaPath: '../../assets/captcha.jpg'
         },
-        btn_value: '获取验证码'
+        btn_value: '获取验证码',
+        interval: ''
       }
     },
     mounted () {
@@ -117,43 +120,56 @@
     },
     methods: {
       login (username, password, type) {
-        password = window.btoa(password)
-        let postData = this.$qs.stringify({
-          name: username,
-          password: password,
-          type: type
-        })
-        this.$axios({
-         method: 'post',
-         url: '/login',
-         data: postData
-        }).then(res=>{
-          if(res.data.code === 200){
-            this.$message({
-              type: 'success',
-              message: res.data.message
+        switch (type) {
+          case 'password':
+            password = window.btoa(password)
+            let postData = this.$qs.stringify({
+              name: username,
+              password: password,
+              type: type
             })
+            this.$axios({
+              method: 'post',
+              url: '/login',
+              data: postData
+            }).then(res=>{
+              if(res.data.code === 200){
+                this.$message({
+                  type: 'success',
+                  message: res.data.message
+                })
 
-            this.$router.push({path:'/AnalyzerHome'})
-          }else if(res.data.code === 401){
+                this.$router.push({path:'/AnalyzerHome'})
+              }else if(res.data.code === 401){
+                this.$message({
+                  type: 'warning',
+                  message: res.data.message
+                })
+
+                this.flushState()
+                this.flushCaptcha()
+                this.user.username = ''
+                this.user.passwd = ''
+              }else{
+                this.$message({
+                  type: 'danger',
+                  message: res.data.message
+                })
+              }
+            }).catch(error=>{
+              console.log(error)
+            })
+            break
+          case 'phone':
+            console.log('phone')
+            break
+          default:
             this.$message({
               type: 'warning',
-              message: res.data.message
+              message: 'there is no type like this'
             })
+        }
 
-            this.flushState()
-            this.flushCaptcha()
-            this.user.username = ''
-            this.user.passwd = ''
-          }else{
-            this.$message({
-              type: 'danger',
-              message: res.data.message
-            })
-          }
-        }).catch(error=>{
-          console.log(error)
-        })
       },
       signIn () {
       },
@@ -172,43 +188,113 @@
         }
       },
 
-      checkCap(captcha, state) {
-        if (state === 0 && this.captcha.value !== '') {
-          this.$axios.get(
-            '/guest/checkCaptcha?input=' + captcha
-          ).then(res => {
-            if (res.data.code === 200) {
-              this.captcha.check = 1
-            } else if (res.data.code !== 200) {
-              this.captcha.check = 2
-              this.$message({
-                type: 'warning',
-                message: '验证码不正确'
-              })
+      checkCap(captcha, state, type) {
+        if(type === 'password') {
+          if (state === 0 && this.captcha.value !== '') {
+            this.$axios.get(
+              '/guest/checkCaptcha?input=' + captcha
+            ).then(res => {
+              if (res.data.code === 200) {
+                this.captcha.check = 1
+              } else if (res.data.code !== 200) {
+                this.captcha.check = 2
+                this.$message({
+                  type: 'warning',
+                  message: '验证码不正确'
+                })
 
-              this.flushCaptcha()
-            }
-          }).catch(error => {
-            console.log(error)
-          })
+                this.flushCaptcha()
+              }
+            }).catch(error => {
+              console.log(error)
+            })
+          }
+        }else if(type === 'phone'){
+
+          if(state === 0 && this.captcha.value !== ''){
+            this.$axios.get(
+              '/guest/checkMsg?input=' + captcha
+            ).then(res => {
+              if(res.data.code === 200){
+                this.$message({
+                  type: 'success',
+                  message: res.data.message
+                })
+                this.captcha.check = 1;
+              }else{
+                this.$message({
+                  type: 'warning',
+                  message: res.data.message
+                })
+
+                this.btn_value = '获取验证码'
+                if(this.interval !== '')
+                  clearInterval(this.interval)
+              }
+            }).catch(error => {
+              console.log(error)
+            })
+          }
         }
       },
       getMsg (phone) {
-        console.log("phone")
-        this.checkTime(60)
+        if (!/^1([345678])\d{9}$/.test(phone)) {
+          this.$message({
+            type: 'warning',
+            message: '请填写正确的手机号码'
+          })
+        } else {
+          this.$axios.get('/guest/msgCap',
+            {
+              params: {
+                phoneNum: phone
+              }
+            }).then(res => {
+            if (res.data === true) {
+              this.$message({
+                type: 'success',
+                message: '成功生成验证码，请在手机上查看，验证码60s内有效'
+              })
+              this.checkTime(60)
+            } else {
+              this.$message({
+                type: 'warning',
+                message: '未能成功生成，请检查信息是否正确，然后重新点击生成验证码'
+              })
+            }
+          })
+        }
       },
       checkTime (seconds) {
         let that = this
         let time = seconds
         that.btn_value = '重新获取(' + time + ' s)'
-        var interval = setInterval(function () {
+        this.interval = setInterval(function () {
           time = time - 1
           that.btn_value = '重新获取(' + time + ' s)'
           if(time === 0){
             that.btn_value = '获取验证码'
-            clearInterval(interval)
+            clearInterval(that.interval)
           }
         }, 1000)
+      },
+      change_type() {
+
+        this.show_card = false;
+        let time = 2;
+        let that = this
+        let inter = setInterval(function () {
+          time = time - 1
+          if(time === 0){
+            if(that.type === 'password')
+              that.type = 'phone';
+            else
+              that.type = 'password'
+            that.show_card = true
+            console.log('showcard')
+            clearInterval(inter)
+          }
+        }, 200)
       }
 
     }
