@@ -202,7 +202,6 @@ export default {
   body {
     font-family: "Segoe WPC", "Segoe UI", "SFUIText-Light", "HelveticaNeue-Light", sans-serif, "Droid Sans Fallback";
     font-size: 14px;
-    padding: 0 12px;
     line-height: 22px;
     word-wrap: break-word;
   }

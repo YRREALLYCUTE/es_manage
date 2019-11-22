@@ -1,14 +1,17 @@
 <template>
+  <div>
+  <head-top></head-top>
   <el-card>
     god , this is a test ! let me run it ok !
 
     <br>
     <el-button @click="testAxios()">test123</el-button>
   </el-card>
-
+  </div>
 </template>
 
 <script>
+  import HeadTop from '../../components/layout/HeadTop'
 export default {
   name: 'test',
   data () {
@@ -30,6 +33,9 @@ export default {
         console.log(res.data)
       })
     }
+  },
+  components: {
+    HeadTop
   }
 }
 </script>

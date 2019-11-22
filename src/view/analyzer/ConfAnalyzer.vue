@@ -1,11 +1,8 @@
 <template>
   <!--主页暂时这样子不改，新加的内容会变一下-->
   <div>
-
-    <el-tabs style="height: 200px;" @tab-click="handleTabClick">
-      <el-tab-pane label="分词器测试">
-        <analyzer></analyzer>
-      </el-tab-pane>
+    <head-top></head-top>
+    <el-tabs style="height: 200px;width: 96%;margin-right: auto; margin-left: auto" @tab-click="handleTabClick">
 
       <el-tab-pane label="通用同义词配置">
         <tycb ref="myTycb"></tycb>
@@ -114,16 +111,17 @@
 </template>
 
 <script>
-import ExtendWords from '../../components/ExtendWords'
+import ExtendWords from '../../components/analyzer/ExtendWords'
 import ElTabPane from 'element-ui/packages/tabs/src/tab-pane'
-import Analyzer from '../../components/Analyzer'
-import Tycb from '../../components/TycbConfig'
-import Tdcb from '../../components/TdcbConfig'
+import Analyzer from '../../components/analyzer/Analyzer'
+import Tycb from '../../components/analyzer/TycbConfig'
+import Tdcb from '../../components/analyzer/TdcbConfig'
 import ElPopover from 'element-ui/packages/popover/src/main'
-import Helper from '../../components/Help/Helper'
+import Helper from '../../components/help/Helper'
+import HeadTop from '../../components/layout/HeadTop'
 
 export default {
-  name: 'home-page',
+  name: 'conf-analyzer',
   data () {
     return {
       size: 14,
@@ -364,6 +362,7 @@ export default {
     }
   },
   components: {
+    HeadTop,
     ElPopover,
     ElTabPane,
     ExtendWords,

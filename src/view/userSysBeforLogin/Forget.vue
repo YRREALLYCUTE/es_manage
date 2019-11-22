@@ -1,4 +1,15 @@
 <template>
+  <!-- 确定找回密码方式 a: 密保问题找回密码
+     接下来两个页面 输入账号
+                 选择设置的问题(增加干扰项) 输入答案
+     b: 通过手机验证码找回密码
+        两个页面  输入手机号  确认无误并发送验证码
+                 输入验证码
+     上述方式验证成功之后
+           重置密码界面
+             输入密码  再次输入  检测是否相同 确认后重置完成。
+     -->
+  <!--选择方式-->
   <div class="forget_card_style">
   <el-steps :active="active" finish-status="success" align-center simple>
     <el-step title="选择方式"></el-step>
@@ -7,18 +18,7 @@
     <el-step title="重置密码"></el-step>
   </el-steps>
   <transition name="el-zoom-in-top">
-    <el-card  v-show="show_card_forget" shadow="hover">
-      <!-- 确定找回密码方式 a: 密保问题找回密码
-      接下来两个页面 输入账号
-                  选择设置的问题(增加干扰项) 输入答案
-      b: 通过手机验证码找回密码
-         两个页面  输入手机号  确认无误并发送验证码
-                  输入验证码
-      上述方式验证成功之后
-            重置密码界面
-              输入密码  再次输入  检测是否相同 确认后重置完成。
-      -->
-      <!--选择方式-->
+    <el-card  style="background-color: rgba(243,243,243,0.29);" v-show="show_card_forget" shadow="hover">
       <div v-if="type===1">
         <h3 align="center">选择找回方式</h3>
         <el-form :model="infoForm" align="center">
@@ -65,12 +65,12 @@
           </el-form-item>
 
         </el-form>
-        <el-form :model="infoForm" align="center" :label-position="labelposition" label-width="30%" v-if="choice==='2'">
+        <el-form :model="infoForm" :label-position="labelposition" label-width="30%" v-if="choice==='2'">
           <el-form-item label="手机号">
             <el-input style="width: 70%; margin-right: 30%" v-model="infoForm.phoneNum" size="mini" placeholder="请输入手机号"></el-input>
           </el-form-item>
           <el-form-item>
-            <el-button size="mini" type="primary" @click="checkPhoneNum(infoForm.username)">下一步</el-button>
+            <el-button style="margin-left: 20%; margin-right: 50%" size="mini" type="primary" @click="checkPhoneNum(infoForm.phoneNum)">下一步</el-button>
           </el-form-item>
         </el-form>
       </div>
@@ -83,6 +83,14 @@
           <el-form-item label="A: ">
             <el-input v-model="infoForm.answer" size="mini" style="width: 70%; margin-right: 30%;"
                       placeholder="请输入答案" @keyup.enter.native="checkAnswer(infoForm.answer, infoForm.username)"
+            ></el-input>
+          </el-form-item>
+        </el-form>
+        <!--    使用手机号找回密码，填写验证码验证身份    -->
+        <el-form label-width="30%" :label-position="labelposition" :model="infoForm" v-if="choice==='2'">
+          <el-form-item label="验证码">
+            <el-input v-model="infoForm.msgcode" size="mini" style="width: 70%; margin-right: 30%;"
+                      placeholder="请输入验证码" @keyup.enter.native="checkMsg(infoForm.msgcode)"
             ></el-input>
           </el-form-item>
         </el-form>
@@ -135,7 +143,8 @@
           phoneNum:'',
           captcha: '',
           password: '',
-          repassword: ''
+          repassword: '',
+          msgcode: ''
         },
         captcha: {
           path: '../../assets/captcha.jpg',
@@ -220,7 +229,35 @@
         }
       },
       checkPhoneNum(phoneNum){
-
+        var TEL_REGEXP = /^1([38]\d|5[0-35-9]|7[3678])\d{8}$/;
+        if(TEL_REGEXP.test(phoneNum)){
+          this.$axios.get('/guest/msgCap',{
+            params:{
+              phoneNum: phoneNum
+            }
+          }).then(res=>{
+            if(res.data){
+              this.$message({
+                type: 'success',
+                message: '验证码已发送，请在60s内完成验证'
+              })
+              this.change_type()
+            }else{
+              this.$message({
+                type: 'warning',
+                message: '验证码发送失败，请重试'
+              })
+              this.change_type_minus()
+            }
+          }).catch(error=>{
+            console.log(error)
+          })
+        }else{
+          this.$message({
+            type: 'warning',
+            message: '您输入的电话号码有误'
+          })
+        }
       },
       checkAnswer(answer, username){
         let postJson = this.$qs.stringify({
@@ -246,7 +283,48 @@
           }
         })
       },
-
+      checkMsg (msgCode) {
+        this.$axios.get('/guest/checkMsg',{
+          params:{
+            input: msgCode
+          }
+        }).then(res=>{
+          if(res.data.code === 200) {
+            this.$message({
+              type: 'success',
+              message: '验证成功！'
+            })
+            this.$axios.get('/guest/findPwdBackByPhone', {
+              params: {
+                phone: this.infoForm.phoneNum
+              }
+            }).then(res => {
+              if (res.data.code === 200) {
+                this.$message({
+                  type: 'success',
+                  message: '您可以重置密码了，请在3min内完成'
+                })
+                this.change_type()
+              }else{
+                this.$message({
+                  type: 'warning',
+                  message: res.data.message
+                })
+                if(res.data.code === 401){
+                  this.change_type_minus()
+                }
+                this.change_type_minus()
+              }
+            })
+          }else{
+            this.$message({
+              type: 'warning',
+              message: '验证失败! 请重新发送验证码'
+            })
+            this.change_type_minus()
+          }
+        })
+      },
       // 重置密码
       resetPassword(pwd, repwd) {
         if(pwd === repwd) {
@@ -265,20 +343,24 @@
             data: postData
           }).then(res => {
             if (res.data.code === 200) {
-              this.$message({
-                type: 'success',
-                message: '密码重置成功！3s后跳转到登陆页面'
-              })
+              // this.$message({
+              //   type: 'success',
+              //   message: '密码重置成功！稍后跳转到登陆页面'
+              // })
               this.resetState = true
-              let that = this
-              let time = 2
-              let inter = setInterval(function () {
-                time -= 1
-                if (time === 0) {
-                  clearInterval(that.inter)
-                  that.$router.push({path:'/login'})
-                }
-              }, 1000)
+              // let that = this
+              // let time = 2
+              // let inter = setInterval(function () {
+              //   time -= 1
+              //   if (time === 0) {
+              //     clearInterval(that.inter)
+              //     that.$router.push({path:'/login'})
+              //   }
+              // }, 1000)
+              this.loading({
+                text: '密码重置成功！正在跳转到登陆页面...'
+              })
+              this.$router.push({path:'/login'})
             } else {
               this.$message({
                 type: 'warning',
@@ -358,6 +440,18 @@
       },
       gotoLogin(){
         this.$router.push({path: '/login'})
+      },
+      loading ({text='loading', fullscreen=true, lock=true, time=1000, background='rgba(0, 0, 0, 0.7)'} = {}) {
+        const load = this.$loading({
+          fullscreen: fullscreen,
+          text: text,
+          background: background,
+          lock: lock,
+          spinner: 'el-icon-loading'
+        })
+        setTimeout(() => {
+          load.close()
+        }, time)
       }
     }
   }

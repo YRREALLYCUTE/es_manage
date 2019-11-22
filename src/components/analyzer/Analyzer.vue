@@ -1,8 +1,6 @@
 <template>
   <div>
-    <h3>分词器测试</h3>
     <div>
-
       <el-input placeholder="请输入url" v-model="input_url">
         <template slot="prepend">Http(s)://</template>
         <el-button slot="append" @click="dialogFormVisible = true">连接</el-button>

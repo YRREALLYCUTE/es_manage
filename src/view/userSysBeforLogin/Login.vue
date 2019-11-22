@@ -1,7 +1,7 @@
 <template>
     <div>
       <transition name="el-zoom-in-center">
-      <el-card style="width: 25%; margin-left: auto;  margin-right: auto; margin-top: 8%" shadow="hover" v-show="show_card">
+      <el-card style="background-color: rgba(243,243,243,0.29); width: 25%; margin-left: auto;  margin-right: auto; margin-top: 8%" shadow="hover" v-show="show_card">
         <h3 align="center">用户登录</h3>
 
         <el-form :model="user" label-width="80px">
@@ -43,7 +43,7 @@
                     v-if="btn_value==='获取验证码' && captcha.check === 0"
                   >{{btn_value}}</el-button>
 
-                  <i class="el-icon-circle-check" v-if="captcha.check===1">&nbsp;&nbsp;&nbsp;验证通过</i>
+                  <i class="el-icon-circle-check" v-if="captcha.check===1">   验证通过</i>
                 </div>
                 <div v-if="type==='phone'">
                   <el-button
@@ -75,7 +75,7 @@
               </el-col>
 
               <el-col :offset="1" :span="5">
-                <el-button icon="el-icon-s-promotion" type="primary" size="mini" @click="login(user.username, user.passwd, type)">登录</el-button>
+                <el-button icon="el-icon-s-promotion" type="primary" size="mini" @click="login(user.username, user.passwd, user.phoneNum, type)">登录</el-button>
               </el-col>
               <el-col :offset="1" :span="5">
                 <el-button icon="el-icon-notebook-2" size="mini" @click="signIn()">注册</el-button>
@@ -95,7 +95,7 @@
 <script>
 /* eslint-disable */
   export default {
-    name: 'login-sign',
+    name: 'login',
     data () {
       return {
         show_card:true,
@@ -119,49 +119,24 @@
       this.flushCaptcha()
     },
     methods: {
-      login (username, password, type) {
+      login (username, password, phone, type) {
+        let postData = ''
         switch (type) {
           case 'password':
             password = window.btoa(password)
-            let postData = this.$qs.stringify({
+            postData = this.$qs.stringify({
               name: username,
               password: password,
               type: type
             })
-            this.$axios({
-              method: 'post',
-              url: '/login',
-              data: postData
-            }).then(res=>{
-              if(res.data.code === 200){
-                this.$message({
-                  type: 'success',
-                  message: res.data.message
-                })
 
-                this.$router.push({path:'/AnalyzerHome'})
-              }else if(res.data.code === 401){
-                this.$message({
-                  type: 'warning',
-                  message: res.data.message
-                })
-
-                this.flushState()
-                this.flushCaptcha()
-                this.user.username = ''
-                this.user.passwd = ''
-              }else{
-                this.$message({
-                  type: 'danger',
-                  message: res.data.message
-                })
-              }
-            }).catch(error=>{
-              console.log(error)
-            })
             break
           case 'phone':
             console.log('phone')
+            postData = this.$qs.stringify({
+              phoneNum: phone,
+              type: type
+            })
             break
           default:
             this.$message({
@@ -170,8 +145,42 @@
             })
         }
 
+        this.$axios({
+          method: 'post',
+          url: '/login',
+          data: postData
+        }).then(res=>{
+          if(res.data.code === 200){
+            this.$message({
+              type: 'success',
+              message: '您已经成功登录！'
+            })
+            sessionStorage.setItem('user', res.data.message.username)
+            sessionStorage.setItem('role', res.data.message.role)
+            this.$store.commit('saveUserInfo', res.data.message)
+            this.$router.push({path:'/manage'})
+          }else if(res.data.code === 401){
+            this.$message({
+              type: 'warning',
+              message: res.data.message
+            })
+
+            this.flushState()
+            this.flushCaptcha()
+            this.user.username = ''
+            this.user.passwd = ''
+          }else{
+            this.$message({
+              type: 'danger',
+              message: res.data.message
+            })
+          }
+        }).catch(error=>{
+          console.log(error)
+        })
       },
       signIn () {
+        this.$router.push({path: '/sign'})
       },
       flushState(){
         this.captcha.check = 0
